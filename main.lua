@@ -1,26 +1,53 @@
 -- ============================================
--- OR's KEY SYSTEM - SCRIPT ROBLOX
--- Site: https://key-system-by-or-s.vercel.app
+-- OR's KEY SYSTEM - VERSÃO DELTA EXECUTOR
 -- ============================================
 
 local SiteURL = "https://key-system-by-or-s.vercel.app"
+local KeyValidada = false
 
--- FUNÇÃO PARA VALIDAR KEY
-local function ValidarKey(key)
+-- FUNÇÃO ESPECIAL PARA DELTA (usa syn.request se existir)
+local function FazerRequisicao(url)
+    -- Tenta syn.request (funciona em alguns executors)
     local sucesso, resultado = pcall(function()
-        local HttpService = game:GetService("HttpService")
-        local url = SiteURL .. "/?api=true&key=" .. key
-        return HttpService:GetAsync(url)
+        local request = syn and syn.request or http_request or request
+        if request then
+            local resposta = request({
+                Url = url,
+                Method = "GET",
+                Headers = {["User-Agent"] = "Delta-Executor"}
+            })
+            return resposta.Body
+        else
+            -- Se não tiver request, tenta HttpService
+            return game:HttpGet(url)
+        end
     end)
     
     if sucesso and resultado then
-        local dados = game:GetService("HttpService"):JSONDecode(resultado)
-        return dados.valid, dados
+        return resultado
+    end
+    return nil
+end
+
+-- FUNÇÃO PARA VALIDAR KEY (adaptada)
+local function ValidarKey(key)
+    local url = SiteURL .. "/?api=true&key=" .. key
+    local resposta = FazerRequisicao(url)
+    
+    if resposta then
+        -- Tenta decodificar o JSON
+        local sucesso, dados = pcall(function()
+            return game:GetService("HttpService"):JSONDecode(resposta)
+        end)
+        
+        if sucesso and dados and dados.valid then
+            return true, dados
+        end
     end
     return false, nil
 end
 
--- CRIAR INTERFACE
+-- CRIAR INTERFACE (igual antes)
 local Player = game.Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 
@@ -223,4 +250,4 @@ ClearButton.MouseButton1Click:Connect(function()
     StatusLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
 end)
 
-print("✅ OR's Key System carregado!")
+print("✅ OR's Key System carregado (Versão Delta)!")
